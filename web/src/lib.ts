@@ -39,6 +39,15 @@ export function clearSecret() {
   } catch {}
 }
 
+// Accepts a full transfer link, a bare "#s=..." fragment, or a raw key.
+export function extractSecret(input: string): string | null {
+  const trimmed = input.trim();
+  const fromLink = trimmed.match(/#s=([A-Za-z0-9_]+)/);
+  if (fromLink) return fromLink[1];
+  if (/^feedsecret_[a-f0-9]+$/.test(trimmed)) return trimmed;
+  return null;
+}
+
 export type BootstrapResult = {
   secret: string;
   write_key: string;

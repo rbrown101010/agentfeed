@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
 import { api } from "../../backend/convex/_generated/api";
-import { bootstrap, type BootstrapResult } from "./lib";
+import { bootstrap, extractSecret, type BootstrapResult } from "./lib";
 
 export default function Onboarding({ onDone }: { onDone: (secret: string) => void }) {
   const [step, setStep] = useState(0);
@@ -13,6 +13,28 @@ export default function Onboarding({ onDone }: { onDone: (secret: string) => voi
   const [hookKey, setHookKey] = useState("");
   const [hookHeader, setHookHeader] = useState("");
   const setWebhook = useMutation(api.accounts.setGrokWebhook);
+  const convex = useConvex();
+  const [signingIn, setSigningIn] = useState(false);
+  const [pasted, setPasted] = useState("");
+
+  async function signIn() {
+    const candidate = extractSecret(pasted);
+    if (!candidate) {
+      setError("That doesn't look like a transfer link or key.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const ok = await convex.query(api.accounts.verify, { secret: candidate });
+      if (ok) onDone(candidate);
+      else setError("No feed found for that link. Check you copied the whole thing.");
+    } catch (e: any) {
+      setError(String(e?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function create() {
     setBusy(true);
@@ -69,11 +91,37 @@ export default function Onboarding({ onDone }: { onDone: (secret: string) => voi
             Agents push ranked cards into your feed on a schedule.
             You open this and scroll. That's the whole app.
           </p>
-          <button className="cta" onClick={create} disabled={busy}>
-            {busy ? "Creating your feed…" : "Create my feed"}
-          </button>
-          {error && <p className="error">{error}</p>}
-          <p className="fineprint">One tap. No email, no password — a private key is created for this device.</p>
+          {!signingIn ? (
+            <>
+              <button className="cta" onClick={create} disabled={busy}>
+                {busy ? "Creating your feed…" : "Create my feed"}
+              </button>
+              {error && <p className="error">{error}</p>}
+              <button className="ghost" onClick={() => { setSigningIn(true); setError(""); }}>
+                I already have a feed →
+              </button>
+              <p className="fineprint">One tap. No email, no password — a private key is created for this device.</p>
+            </>
+          ) : (
+            <>
+              <label>Transfer link or key</label>
+              <input
+                autoFocus
+                placeholder="Paste your transfer link…"
+                value={pasted}
+                onChange={(e) => setPasted(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Return") signIn(); }}
+              />
+              {error && <p className="error">{error}</p>}
+              <button className="cta" onClick={signIn} disabled={busy || pasted.trim() === ""}>
+                {busy ? "Checking…" : "Open my feed"}
+              </button>
+              <button className="ghost" onClick={() => { setSigningIn(false); setError(""); }}>
+                ← Back
+              </button>
+              <p className="fineprint">On your computer: ⚙︎ settings → Copy transfer link, or scan the QR there.</p>
+            </>
+          )}
         </div>
       )}
 

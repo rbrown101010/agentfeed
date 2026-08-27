@@ -126,3 +126,16 @@ export const onboarding = query({
     };
   },
 });
+
+// Non-throwing check so the sign-in screen can validate a pasted key.
+export const verify = query({
+  args: { secret: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { secret }) => {
+    const account = await ctx.db
+      .query("accounts")
+      .withIndex("by_secret", (q) => q.eq("secret", secret))
+      .unique();
+    return account !== null;
+  },
+});

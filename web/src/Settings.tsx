@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../backend/convex/_generated/api";
 import { APP_URL } from "./lib";
@@ -13,6 +14,20 @@ export default function Settings({ secret, onClose, onReset }: { secret: string;
   const [hookHeader, setHookHeader] = useState("");
   const [saved, setSaved] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [qr, setQr] = useState<string | null>(null);
+  const [qrRevealed, setQrRevealed] = useState(false);
+
+  const transferUrl = `${APP_URL}/#s=${secret}`;
+
+  useEffect(() => {
+    QRCode.toDataURL(transferUrl, {
+      width: 480,
+      margin: 1,
+      color: { dark: "#000000", light: "#ffffff" },
+    })
+      .then(setQr)
+      .catch(() => setQr(null));
+  }, [transferUrl]);
   const [loadedFromMe, setLoadedFromMe] = useState(false);
 
   useEffect(() => {
@@ -63,19 +78,30 @@ export default function Settings({ secret, onClose, onReset }: { secret: string;
         <input placeholder="header name (e.g. X-Api-Key)" value={hookHeader} onChange={(e) => setHookHeader(e.target.value)} />
         <button className="cta" onClick={save}>{saved ? "Saved ✓" : "Save webhook"}</button>
 
-        <h3>Use on another device</h3>
+        <h3>Sign in on your phone</h3>
         <p className="muted small">
-          Open this link on your phone (or any browser) and your feed comes with you.
-          It contains your private key — don't post it anywhere public.
+          Scan with your phone camera, then Share → Add to Home Screen.
+          This code is your private key — it stays hidden until you tap it,
+          so it never lands in a screen recording by accident.
         </p>
+        <div
+          className={qrRevealed ? "qr-wrap revealed" : "qr-wrap"}
+          onClick={() => setQrRevealed((v) => !v)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setQrRevealed((v) => !v); }}
+        >
+          {qr ? <img src={qr} alt="Sign-in QR code" /> : <div className="qr-placeholder">…</div>}
+          {!qrRevealed && <span className="qr-veil">Tap to reveal</span>}
+        </div>
         <button
           className="cta"
           onClick={async () => {
-            try { await navigator.clipboard.writeText(`${APP_URL}/#s=${secret}`); } catch {}
+            try { await navigator.clipboard.writeText(transferUrl); } catch {}
             setLinkCopied(true);
             setTimeout(() => setLinkCopied(false), 2000);
           }}
-        >{linkCopied ? "Copied ✓" : "Copy transfer link"}</button>
+        >{linkCopied ? "Copied ✓" : "Copy transfer link instead"}</button>
 
         <h3>Danger</h3>
         <button className="ghost danger" onClick={() => { if (confirm("Disconnect this device from your feed? Your cards stay in the cloud; the key on this device is forgotten.")) onReset(); }}>
