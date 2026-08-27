@@ -223,6 +223,7 @@ button, input, textarea { font: inherit; color: inherit; }
   padding: 10px 22px calc(env(safe-area-inset-bottom) + 22px);
   display: flex; flex-direction: column;
 }
+.sheet > * { flex: none; }  /* stop fixed-height children (QR, textarea) collapsing */
 .sheet-handle { width: 44px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.25); margin: 6px auto 16px; }
 .sheet h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
 .sheet h3 { font-size: 15px; font-weight: 800; margin-top: 26px; margin-bottom: 4px; }
